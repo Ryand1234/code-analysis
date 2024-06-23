@@ -1,6 +1,14 @@
 import re
-
+"""
 # Define the regex patterns
+class_pattern = re.compile(r'^\s*class\s+(?P<class_name>\w+)\s*[\(:]?')
+function_pattern = re.compile(r'^\s*def\s+(?P<function_name>\w+)\s*\((?P<parameters>[^\)]*)\)\s*:')
+service_pattern = re.compile(r'^\s*(?P<service_name>\w+)\s*=\s*(?P<class_instance>\w+)\(\s*\)')
+self_function_pattern = re.compile(r'self\.(?P<self_function>\w+)\s*\(')
+super_function_pattern = re.compile(r'super\(\)\.(?P<super_function>\w+)\s*\(')
+instance_function_pattern = re.compile(r'(?P<instance>\w+)\.(?P<instance_function>\w+)\s*\(')
+"""
+
 class_pattern = re.compile(r'^\s*class\s+(?P<class_name>\w+)\s*[\(:]?')
 function_pattern = re.compile(r'^\s*def\s+(?P<function_name>\w+)\s*\((?P<parameters>[^\)]*)\)\s*:')
 service_pattern = re.compile(r'^\s*(?P<service_name>\w+)\s*=\s*(?P<class_instance>\w+)\(\s*\)')
@@ -78,7 +86,7 @@ for file in os.listdir(dirname):
         
             if self_function_match:
                 self_function = self_function_match.group('self_function')
-                functions_used_service[current_class].add(self_function_match)
+                functions_used_service[current_class].add(self_function)
                 print(f"  Self function call: {self_function} (in class {current_class})")
 
             if super_function_match:
@@ -101,6 +109,7 @@ service_names = [key for key, value in service_class_mapping.items()]
 
 final = {}
 functions_not_used = {}
+unknown_functions = {}
 for k in service_names:
     if k not in functions_used_service:
         continue
@@ -110,19 +119,34 @@ for k in service_names:
     final[cur].update(functions_used_service[k])
 
 for k, value in class_functions_set.items():
-    if k not in functions_not_used:
-        functions_not_used[k] = {}
     if k not in final:
         continue
+    if k not in functions_not_used:
+        functions_not_used[k] = {}
     cur = value - final[k]
     for f in cur:
         functions_not_used[k][f] = class_functions[k][f]
+
+
+for k, value in final.items():
+    if k not in final:
+        continue
+    if k not in unknown_functions:
+        unknown_functions[k] = set()
+    unknown_functions[k] = value - class_functions_set[k]
 
 #print(class_functions, service_class_mapping)
 print("###########################################################################################")
 print("######################   GENERATING REPORT          #######################################")
 print("###########################################################################################")
 for k, v in functions_not_used.items():
-    print("#####\tClassName: ", k, "\t\t\t\t#####")
+    print("#####\tClassName: ", k)
     for f, p in v.items():
-        print("#####\t\tFunction Name: ", f, "(", p, ")\t\t\t\t#####")
+        print("#####\t\tFunction Name: ", f, "(", p, ")")
+print("##########################################################################################")
+print("############################   UNKNOWN FUNCTIONS    ######################################")
+print("##########################################################################################")
+for k, v in unknown_functions.items():
+    print("#####\tClassName: ", k)
+    for f in v:
+        print("#####\t\tFunction Name: ", f)
